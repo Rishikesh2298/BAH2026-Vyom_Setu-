@@ -1,0 +1,220 @@
+# Satellite Data Source Configuration
+# Bharatiya Antariksha Hackathon 2026
+
+satellites:
+  # INSAT (Indian National Satellite System)
+  insat:
+    name: "Indian National Satellite System"
+    operator: "ISRO"
+    type: "geostationary"
+
+    instruments:
+      imager:
+        bands:
+          - name: VIS
+            wavelength: 0.65 # micrometers
+            resolution: 1 # km
+
+          - name: SWIR
+            wavelength: 3.7
+            resolution: 4
+
+          - name: TIR
+            wavelength: 10.7
+            resolution: 4
+
+      sounder:
+        bands: 19
+        resolution: 8 # km
+
+    products:
+      - code: CC
+        name: "Cloud Cover"
+        resolution: 4 # km
+        frequency: hourly
+        latency: 30 # minutes
+
+      - code: SST
+        name: "Sea Surface Temperature"
+        resolution: 4
+        frequency: hourly
+        latency: 60
+
+      - code: OLR
+        name: "Outgoing Longwave Radiation"
+        resolution: 4
+        frequency: hourly
+        latency: 30
+
+      - code: WV
+        name: "Wind Vectors"
+        resolution: 8
+        frequency: every_6_hours
+        latency: 120
+
+      - code: CAPE
+        name: "Convective Available Potential Energy"
+        resolution: 8
+        frequency: every_6_hours
+        latency: 120
+
+    access:
+      url: "https://mausam.imd.gov.in/"
+      format: "NetCDF"
+      authentication: "credentials"
+
+  # Oceansat Series
+  oceansat:
+    name: "Oceansat Series"
+    operator: "ISRO"
+    type: "polar_orbiting"
+
+    instruments:
+      scatterometer:
+        name: "OSCAT"
+        resolution: 25 # km
+        swath: 1400 # km
+
+      radiometer:
+        name: "OSRAD"
+        resolution: 50
+        swath: 1400
+
+    products:
+      - code: SWS
+        name: "Surface Wind Speed"
+        resolution: 25
+        frequency: daily
+        latency: 24 # hours
+        coverage: "Indian Ocean"
+
+      - code: SSH
+        name: "Sea Surface Height"
+        resolution: 25
+        frequency: daily
+        latency: 24
+
+      - code: SST
+        name: "Sea Surface Temperature"
+        resolution: 50
+        frequency: daily
+        latency: 24
+
+      - code: SSS
+        name: "Sea Surface Salinity"
+        resolution: 50
+        frequency: daily
+        latency: 24
+
+    access:
+      url: "https://bhuvan.nrsc.gov.in/"
+      format: "HDF5"
+      authentication: "credentials"
+
+# Ground-Based Network
+ground_networks:
+  imd:
+    name: "Indian Meteorological Department"
+    type: "surface_network"
+
+    stations:
+      total: 2400
+
+      categories:
+        automated_weather_stations:
+          count: 400
+          update_frequency: hourly
+
+        synoptic_stations:
+          count: 600
+          update_frequency: every_3_hours
+
+        rainfall_stations:
+          count: 1400
+          update_frequency: daily
+
+    variables:
+      temperature:
+        units: "°C"
+        accuracy: "±0.5"
+        frequency: "3 hourly"
+
+      humidity:
+        units: "%"
+        accuracy: "±3"
+        frequency: "3 hourly"
+
+      wind_speed:
+        units: "m/s"
+        accuracy: "±0.5"
+        frequency: "3 hourly"
+
+      rainfall:
+        units: "mm"
+        accuracy: "±1"
+        frequency: "daily"
+
+      sea_level_pressure:
+        units: "hPa"
+        accuracy: "±1"
+        frequency: "3 hourly"
+
+    access:
+      url: "https://mausam.imd.gov.in/"
+      format: "CSV/JSON"
+      authentication: "api_key"
+
+# Reanalysis Data
+reanalysis_data:
+  merra2:
+    name: "MERRA-2 Reanalysis"
+    organization: "NASA"
+    resolution: "0.5° × 0.67°"
+    temporal_resolution: "hourly/3-hourly"
+    coverage: "global"
+
+    variables:
+      - temperature_2m
+      - specific_humidity
+      - wind_u_component
+      - wind_v_component
+      - total_precipitation
+      - mean_sea_level_pressure
+      - surface_solar_radiation
+
+    access:
+      url: "https://disc.gsfc.nasa.gov/"
+      format: "NetCDF/HDF5"
+      latency: "1 month"
+
+  era5:
+    name: "ERA5 Climate Reanalysis"
+    organization: "ECMWF"
+    resolution: "0.25°"
+    temporal_resolution: "hourly"
+    coverage: "global"
+
+    variables:
+      - temperature
+      - precipitation
+      - wind_components
+      - geopotential
+      - surface_pressure
+      - humidity
+
+    access:
+      url: "https://cds.climate.copernicus.eu/"
+      format: "NetCDF"
+      latency: "3 months"
+
+# Data Quality Checks
+data_quality:
+  satellite:
+    max_missing_fraction: 0.3
+    outlier_threshold: 3.0 # standard deviations
+    spatial_coherence_check: true
+
+  ground_observations:
+    max_missing_fraction: 0.1
+    outlier_threshold: 2.5
+    temporal_consistency_check: true
