@@ -1,0 +1,107 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: climate_twin_postgres
+    environment:
+      POSTGRES_DB: climate_twin
+      POSTGRES_USER: climate_user
+      POSTGRES_PASSWORD: change_me_in_production
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U climate_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: climate_twin_redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # FastAPI Backend
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: climate_twin_backend
+    environment:
+      DATABASE_URL: postgresql://climate_user:change_me_in_production@postgres:5432/climate_twin
+      REDIS_URL: redis://redis:6379
+      PYTHONUNBUFFERED: 1
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app/backend
+      - ./data:/app/data
+    command: uvicorn backend.app:app --host 0.0.0.0 --port 8000 --reload
+
+  # React Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: climate_twin_frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    environment:
+      REACT_APP_API_URL: http://backend:8000/api
+    volumes:
+      - ./frontend/src:/app/src
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: climate_twin_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - backend
+      - frontend
+
+  # Jupyter Notebook for Analysis
+  jupyter:
+    build:
+      context: .
+      dockerfile: Dockerfile.jupyter
+    container_name: climate_twin_jupyter
+    ports:
+      - "8888:8888"
+    volumes:
+      - ./notebooks:/workspace/notebooks
+      - ./data:/workspace/data
+      - ./backend:/workspace/backend
+      - ./ml_pipeline:/workspace/ml_pipeline
+    environment:
+      JUPYTER_ENABLE_LAB: "yes"
+    command: jupyter lab --ip=0.0.0.0 --allow-root --NotebookApp.token='' --NotebookApp.password=''
+
+volumes:
+  postgres_data:
+
+networks:
+  default:
+    name: climate_twin_network
